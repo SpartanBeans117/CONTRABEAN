@@ -1,11 +1,32 @@
 #Importamos la libreria Pygame
 import pygame
+import sqlite3 #importamos sqlite3 para guardar las rondas
 
 # pantalla
 pygame.init()
 pantalla = pygame.display.set_mode((1280, 720))
 fps = pygame.time.Clock()
 juego = True
+
+#rondas
+# Conexión a la base de datos (se crea si no existe)
+conn = sqlite3.connect("nderondas")
+cursor = conn.cursor()
+
+# Crear tabla rondas
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS nderondas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    personaje1 TEXT,
+    rondas INTEGER
+)
+""")
+
+cursor.execute("SELECT SUM(rondas) FROM nderondas WHERE personaje1 = ?", ("personaje1",))
+total = cursor.fetchone()[0]
+print("Total de rondas:", total)
+
+conn.commit()
 
 
 #plataforma
@@ -63,5 +84,10 @@ while juego:
     # actualiza la pantalla
     pygame.display.flip()
     fps.tick(60)  # FPS
+
+# Guardar puntuación de ejemplo
+cursor.execute("INSERT INTO nderondas (personaje1, rondas) VALUES (?, ?)", ("personaje1", 100))
+conn.commit()
+conn.close()
 
 pygame.quit()
