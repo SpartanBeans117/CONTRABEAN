@@ -16,6 +16,7 @@ class ProyectilP1:
     def __init__(self, x, y, target_x, target_y):
         self.rect = pygame.Rect(x, y, 30, 30)
         self.color = (255, 0, 0)  # rojo
+
         dx = target_x - x
         dy = target_y - y
         mag = (dx**2 + dy**2) ** 0.5
@@ -37,6 +38,7 @@ class ProyectilP2:
     def __init__(self, x, y, target_x, target_y):
         self.rect = pygame.Rect(x, y, 30, 30)
         self.color = (0, 0, 255)  # azul
+        
         dx = target_x - x
         dy = target_y - y
         mag = (dx**2 + dy**2) ** 0.5
@@ -74,6 +76,9 @@ class jugador:
         self.color_change_time = 0  # guarda el momento en que cambió el color
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
+        ####Cooldown de disparo
+        self.last_shot_time = 0
+        self.SHOT_COOLDOWN = 800  # milisegundos (ejemplo: 0.8 segundos)
     ####Movimiento###
     def handle_movement(self, keys):
         if not self.is_dashing:  # solo mover normal si no está en dash
@@ -199,7 +204,9 @@ class jugador2:
         self.color_change_time = 0  # guarda el momento en que cambió el color
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
-
+        ####Cooldown de disparo
+        self.last_shot_time = 0
+        self.SHOT_COOLDOWN = 800  # milisegundos (ejemplo: 0.8 segundos)
     ####Movimiento###
     def handle_movement(self, keys):
         if not self.is_dashing:  # solo mover normal si no está en dash
@@ -399,9 +406,12 @@ while juego:
                 jugador1.dash_to_player(jugador2)
             if event.key == pygame.K_n:
                 jugador1.dash_to_playerb(jugador2)
-            if event.key == pygame.K_m:  # ejemplo: tecla M para jugador1
-                proyectiles_p1.append(ProyectilP1(jugador1.rect.centerx, jugador1.rect.centery,
+            if event.key == pygame.K_m:
+                current_time = pygame.time.get_ticks()
+                if current_time - jugador1.last_shot_time >= jugador1.SHOT_COOLDOWN:
+                    proyectiles_p1.append(ProyectilP1(jugador1.rect.centerx, jugador1.rect.centery,
                                                     jugador2.rect.centerx, jugador2.rect.centery))
+                    jugador1.last_shot_time = current_time
             #if event.key == pygame.K_m:
 
         ######COntroles del jugador 2
@@ -409,9 +419,14 @@ while juego:
                 jugador2.dash_to_player(jugador1)
             if event.key == pygame.K_KP2:
                 jugador2.dash_to_playerb(jugador1)
-            if event.key == pygame.K_KP3:  # ejemplo: tecla NumPad3 para jugador2
-                proyectiles_p2.append(ProyectilP2(jugador2.rect.centerx, jugador2.rect.centery,
+            # Jugador 2 dispara
+            if event.key == pygame.K_KP3:
+                current_time = pygame.time.get_ticks()
+                if current_time - jugador2.last_shot_time >= jugador2.SHOT_COOLDOWN:
+                    proyectiles_p2.append(ProyectilP2(jugador2.rect.centerx, jugador2.rect.centery,
                                                     jugador1.rect.centerx, jugador1.rect.centery))
+                    jugador2.last_shot_time = current_time
+
             #if event.key == pygame.K_KP3:
                 
     keys = pygame.key.get_pressed()
