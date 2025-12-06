@@ -12,25 +12,10 @@ juego = True
 
 ##########Proyectiles#############
 class Proyectil:
-    def __init__(self, x, y, target_x, target_y):
-        self.rect = pygame.Rect(x, y, 10, 10)
-        self.color = (0, 255, 0)
-        # Calcular dirección normalizada hacia el centro
-        dx = target_x - x
-        dy = target_y - y
-        mag = (dx**2 + dy**2) ** 0.5
-        if mag != 0:
-            self.vel_x = dx / mag * 8   # velocidad constante
-            self.vel_y = dy / mag * 8
-        else:
-            self.vel_x, self.vel_y = 0, 0
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 100, 100)
+        self.color = (255, 0, 0)
 
-    def update(self):
-        self.rect.x += self.vel_x
-        self.rect.y += self.vel_y
-
-    def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
 ##########Proyectiles#############
 
 ###########JUGADORES###########

@@ -1,6 +1,7 @@
 #Importamos la libreria Pygame
 import pygame
 import sqlite3 #importamos sqlite3 para guardar las rondas
+import math
 
 # pantalla del juego
 pygame.init()
@@ -11,17 +12,37 @@ juego = True
 
 
 ##########Proyectiles#############
-class Proyectil:
+class ProyectilP1:
     def __init__(self, x, y, target_x, target_y):
-        self.rect = pygame.Rect(x, y, 10, 10)
-        self.color = (0, 255, 0)
-        # Calcular dirección normalizada hacia el centro
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.color = (255, 0, 0)  # rojo
         dx = target_x - x
         dy = target_y - y
         mag = (dx**2 + dy**2) ** 0.5
         if mag != 0:
-            self.vel_x = dx / mag * 8   # velocidad constante
-            self.vel_y = dy / mag * 8
+            self.vel_x = dx / mag * 12
+            self.vel_y = dy / mag * 12
+        else:
+            self.vel_x, self.vel_y = 0, 0
+
+    def update(self):
+        self.rect.x += self.vel_x
+        self.rect.y += self.vel_y
+
+    def draw(self, pantalla):
+        pygame.draw.rect(pantalla, self.color, self.rect)
+
+
+class ProyectilP2:
+    def __init__(self, x, y, target_x, target_y):
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.color = (0, 0, 255)  # azul
+        dx = target_x - x
+        dy = target_y - y
+        mag = (dx**2 + dy**2) ** 0.5
+        if mag != 0:
+            self.vel_x = dx / mag * 15
+            self.vel_y = dy / mag * 15
         else:
             self.vel_x, self.vel_y = 0, 0
 
@@ -299,7 +320,8 @@ class plataforma:
         pygame.draw.rect(pantalla, self.color, self.rect)
         
 
-########Colisiones Mecanica
+########Colisiones Mecanica##################
+####Colision de jugadores
 def check_player_collision(j1, j2):
     if j1.rect.colliderect(j2.rect):
         # Vector entre jugadores
@@ -327,8 +349,33 @@ def check_player_collision(j1, j2):
             j2.is_dashing = True
             j2.dash_timer = 8
 
+########Colision de jugadores
+########Colision de Proyectiles a J
+def check_projectile_collision(player, projectile, knockback=10):
+    if player.rect.colliderect(projectile.rect):
+        # Vector entre jugador y proyectil
+        dx = projectile.rect.centerx - player.rect.centerx
+        dy = projectile.rect.centery - player.rect.centery
+        distancia = (dx**2 + dy**2) ** 0.5
 
+        if distancia != 0:
+            dx /= distancia
+            dy /= distancia
 
+            # Aplicar knockback al jugador
+            player.vel_x = -dx * knockback
+            player.vel_y = -dy * knockback
+
+            # Activar estado de dash temporal (igual que en colisión de jugadores)
+            player.is_dashing = True
+            player.dash_timer = 8
+
+        # Eliminar proyectil tras impacto
+        return True
+    return False
+########Colision de Proyectiles a J
+
+########Colisiones Mecanica################
 
 plataforma1 = plataforma(0,500) #posicion de la plataforma
 
@@ -336,6 +383,10 @@ jugador1 = jugador(610, 100)
 jugador2 = jugador2(610, 100)
 screen_width = pantalla.get_width()
 screen_height = pantalla.get_height()
+
+#almacen de proyectiles
+proyectiles_p1 = []
+proyectiles_p2 = []
 
 ########################JUEGO#####################
 while juego:
@@ -348,6 +399,9 @@ while juego:
                 jugador1.dash_to_player(jugador2)
             if event.key == pygame.K_n:
                 jugador1.dash_to_playerb(jugador2)
+            if event.key == pygame.K_m:  # ejemplo: tecla M para jugador1
+                proyectiles_p1.append(ProyectilP1(jugador1.rect.centerx, jugador1.rect.centery,
+                                                    jugador2.rect.centerx, jugador2.rect.centery))
             #if event.key == pygame.K_m:
 
         ######COntroles del jugador 2
@@ -355,6 +409,9 @@ while juego:
                 jugador2.dash_to_player(jugador1)
             if event.key == pygame.K_KP2:
                 jugador2.dash_to_playerb(jugador1)
+            if event.key == pygame.K_KP3:  # ejemplo: tecla NumPad3 para jugador2
+                proyectiles_p2.append(ProyectilP2(jugador2.rect.centerx, jugador2.rect.centery,
+                                                    jugador1.rect.centerx, jugador1.rect.centery))
             #if event.key == pygame.K_KP3:
                 
     keys = pygame.key.get_pressed()
@@ -366,10 +423,7 @@ while juego:
     if keys[pygame.K_UP]:
         jugador2.jump()
     
-    ######Proyectil################
 
-
-    ######Proyectil###############
 
 
 
@@ -390,6 +444,26 @@ while juego:
 
 #####limpiar pantalla##
     pantalla.fill((0,0,0))
+
+    ######Proyectil################
+    for p in proyectiles_p1:
+        p.update()
+        p.draw(pantalla)
+        if check_projectile_collision(jugador2, p, knockback=12):
+            # knockback jugador2
+            jugador2.vel_x += p.vel_x * 0.5
+            jugador2.vel_y += p.vel_y * 0.5
+            proyectiles_p1.remove(p)
+
+    for p in proyectiles_p2:
+        p.update()
+        p.draw(pantalla)
+        if check_projectile_collision(jugador1, p, knockback=12):
+            # knockback jugador1
+            jugador1.vel_x += p.vel_x * 0.5
+            jugador1.vel_y += p.vel_y * 0.5
+            proyectiles_p2.remove(p)
+    ######Proyectil###############
 
 #####Contador
     # Crear fuente
