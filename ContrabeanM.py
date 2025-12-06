@@ -53,14 +53,17 @@ class jugador:
         self.color_change_time = 0  # guarda el momento en que cambió el color
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
+        #Ataque colision
+        self.is_attacking = False
+        self.attack_timer = 0
     ####Movimiento###
     def handle_movement(self, keys):
         if not self.is_dashing:  # solo mover normal si no está en dash
             self.vel_x = 0
             if keys[pygame.K_a]:
-                self.vel_x = -5
+                self.vel_x = -3
             if keys[pygame.K_d]:
-                self.vel_x = 5
+                self.vel_x = 3
         self.rect.x += self.vel_x
     ####Salto####
     def jump(self):
@@ -81,11 +84,11 @@ class jugador:
         # Normalizar dirección para que la velocidad sea constante
         mag = (dx**2 + dy**2) ** 0.5
         if mag != 0:
-            self.vel_x = int(dx / mag * 15)   # velocidad horizontal
+            self.vel_x = int(dx / mag * 10)   # velocidad horizontal
         else:
             self.vel_x, self.vel_y = 0, 0
         self.is_dashing = True
-        self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+        self.dash_timer = 5   # frames que dura el dash (~1/3 seg a 60fps)
         #self.color = (0, 255, 0)  # verde
         self.color_change_time = pygame.time.get_ticks()  # momento del cambio
         #############
@@ -101,15 +104,15 @@ class jugador:
             # Normalizar dirección para que la velocidad sea constante
             mag = (dx**2 + dy**2) ** 0.5
             if mag != 0:
-                self.vel_x = int(dx / mag * 30)   # velocidad horizontal
+                self.vel_x = int(dx / mag * 10)   # velocidad horizontal
             else:
                 self.vel_x, self.vel_y = 0, 0
             
             # Forzar un pequeño impulso hacia arriba
-            self.vel_y -= 10   # valor negativo = salto
+            self.vel_y -= 15   # valor negativo = salto
             
             self.is_dashing = True
-            self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+            self.dash_timer = 5   # frames que dura el dash (~1/3 seg a 60fps)
             self.on_ground = False
             #self.color = (0, 0, 255)  # azul
             self.color_change_time = pygame.time.get_ticks()
@@ -133,6 +136,11 @@ class jugador:
             self.vel_x = 0
             self.vel_y = 0
             self.out_of_bounds_count += 1  # 🚀 sumar al contador
+        # Actualizacion de ataque
+        if self.attack_timer > 0:
+            self.attack_timer -= 1
+            if self.attack_timer == 0:
+                self.is_attacking = False
 
 
     ####Gravedad####
@@ -178,15 +186,18 @@ class jugador2:
         self.color_change_time = 0  # guarda el momento en que cambió el color
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
+        # ataque colision
+        self.is_attacking = False
+        self.attack_timer = 0
 
     ####Movimiento###
     def handle_movement(self, keys):
         if not self.is_dashing:  # solo mover normal si no está en dash
             self.vel_x = 0
             if keys[pygame.K_LEFT]:
-                self.vel_x = -5
+                self.vel_x = -3
             if keys[pygame.K_RIGHT]:
-                self.vel_x = 5
+                self.vel_x = 3
         self.rect.x += self.vel_x
     ####Salto####
     def jump(self):
@@ -207,11 +218,11 @@ class jugador2:
         # Normalizar dirección para que la velocidad sea constante
         mag = (dx**2 + dy**2) ** 0.5
         if mag != 0:
-            self.vel_x = int(dx / mag * 15)   # velocidad horizontal
+            self.vel_x = int(dx / mag * 10)   # velocidad horizontal
         else:
             self.vel_x, self.vel_y = 0, 0
         self.is_dashing = True
-        self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+        self.dash_timer = 5   # frames que dura el dash (~1/3 seg a 60fps)
         #self.color = (0, 255, 0)  # verde
         self.color_change_time = pygame.time.get_ticks()  # momento del cambio
         #############
@@ -227,16 +238,16 @@ class jugador2:
             # Normalizar dirección para que la velocidad sea constante
             mag = (dx**2) ** 0.5
             if mag != 0:
-                self.vel_x = int(dx / mag * 30)   # velocidad horizontal
+                self.vel_x = int(dx / mag * 10)   # velocidad horizontal
 
             else:
                 self.vel_x, self.vel_y = 0, 0
             
             # Forzar un pequeño impulso hacia arriba
-            self.vel_y -= 10   # valor negativo = salto
+            self.vel_y -= 15   # valor negativo = salto
             
             self.is_dashing = True
-            self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+            self.dash_timer = 5   # frames que dura el dash (~1/3 seg a 60fps)
             self.on_ground = False
             #self.color = (0, 0, 255)  # azul
             self.color_change_time = pygame.time.get_ticks()
@@ -261,6 +272,11 @@ class jugador2:
             self.vel_y = 0
         #contador
             self.out_of_bounds_count += 1  #  sumar al contador
+        #Ataque actualizacion
+        if self.attack_timer > 0:
+            self.attack_timer -= 1
+            if self.attack_timer == 0:
+                self.is_attacking = False
 
 
 
@@ -302,30 +318,38 @@ class plataforma:
 ########Colisiones Mecanica
 def check_player_collision(j1, j2):
     if j1.rect.colliderect(j2.rect):
-        # Vector entre jugadores
         dx = j2.rect.centerx - j1.rect.centerx
         dy = j2.rect.centery - j1.rect.centery
-        distancia = (dx**2 + dy**2) ** 0.5
+        distancia = (dx**2 + dy**2) ** 0.6
 
         if distancia != 0:
             dx /= distancia
             dy /= distancia
+            KNOCKBACK = 10
 
-            KNOCKBACK = 10  # fuerza del dash
+            # --- Separación física para que no se atraviesen ---
+            overlap_x = (j1.rect.width/2 + j2.rect.width/2) - abs(j2.rect.centerx - j1.rect.centerx)
+            overlap_y = (j1.rect.height/2 + j2.rect.height/2) - abs(j2.rect.centery - j1.rect.centery)
 
-            # Jugador 1 retrocede en dirección contraria
-            j1.vel_x = -dx * KNOCKBACK
-            j1.vel_y = -dy * KNOCKBACK
+            if overlap_x > 0 and overlap_y > 0:
+                # empujar a cada jugador en direcciones opuestas
+                j1.rect.x -= dx * overlap_x/2
+                j1.rect.y -= dy * overlap_y/2
+                j2.rect.x += dx * overlap_x/2
+                j2.rect.y += dy * overlap_y/2
 
-            # Jugador 2 retrocede en dirección contraria
-            j2.vel_x = dx * KNOCKBACK
-            j2.vel_y = dy * KNOCKBACK
+            # Solo empujar si hay ataque
+            if j1.is_attacking:
+                j2.vel_x = dx * KNOCKBACK
+                j2.vel_y = dy * KNOCKBACK
+                j2.is_dashing = True
+                j2.dash_timer = 8
 
-            # Activar estado de dash temporal
-            j1.is_dashing = True
-            j1.dash_timer = 8
-            j2.is_dashing = True
-            j2.dash_timer = 8
+            if j2.is_attacking:
+                j1.vel_x = -dx * KNOCKBACK
+                j1.vel_y = -dy * KNOCKBACK
+                j1.is_dashing = True
+                j1.dash_timer = 8
 
 
 
@@ -346,15 +370,23 @@ while juego:
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_b:
                 jugador1.dash_to_player(jugador2)
+                jugador1.is_attacking = True
+                jugador1.attack_timer = 5 
             if event.key == pygame.K_n:
                 jugador1.dash_to_playerb(jugador2)
+                jugador1.is_attacking = True
+                jugador1.attack_timer = 5 
             #if event.key == pygame.K_m:
 
         ######COntroles del jugador 2
             if event.key == pygame.K_KP1:
                 jugador2.dash_to_player(jugador1)
+                jugador2.is_attacking = True
+                jugador2.attack_timer = 5 
             if event.key == pygame.K_KP2:
                 jugador2.dash_to_playerb(jugador1)
+                jugador2.is_attacking = True
+                jugador2.attack_timer = 5 
             #if event.key == pygame.K_KP3:
                 
     keys = pygame.key.get_pressed()
