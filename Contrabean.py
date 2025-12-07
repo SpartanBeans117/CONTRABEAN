@@ -7,6 +7,8 @@ from particle_system import ParticleSystem
 # pantalla del juego
 pygame.init()
 pantalla = pygame.display.set_mode((1280, 720))
+pygame.display.set_caption("escenario")
+escenario = pygame.image.load("escenario.png").convert()
 fps = pygame.time.Clock()
 juego = True
 #particulas
@@ -192,8 +194,7 @@ class jugador:
                 self.image = self.original_image   # 👈 Volver al sprite normal
 
         # Teletransporte si sale de la pantalla
-        if (self.rect.right < 0 or self.rect.left > screen_width or
-            self.rect.bottom < 0 or self.rect.top > screen_height):
+        if (self.rect.right < 0 or self.rect.left > screen_width):
             self.rect.center = (screen_width // 2, screen_height // 2)
             self.vel_x = 0
             self.vel_y = 0
@@ -367,8 +368,7 @@ class jugador2:
                 self.vel_x = 0
 
         # Teletransporte si sale de la pantalla
-        if (self.rect.right < 0 or self.rect.left > screen_width or
-            self.rect.bottom < 0 or self.rect.top > screen_height):
+        if (self.rect.right < 0 or self.rect.left > screen_width):
             self.rect.center = (screen_width // 2, screen_height // 2)
             self.vel_x = 0
             self.vel_y = 0
@@ -437,10 +437,13 @@ class jugador2:
 #plataforma
 class plataforma:
     def __init__(self, x, y):
-        self.rect = pygame.Rect(x, y, 1280, 500)
-        self.color = (0, 255, 0)
+        # Cargar sprite de la plataforma
+        original_image = pygame.image.load("plataforma.png").convert_alpha()
+        self.image = pygame.transform.scale(original_image, (1280, 216))
+        self.rect = self.image.get_rect(topleft=(x, y))
+        
     def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
+        pantalla.blit(self.image, self.rect)
         
 
 ########Colisiones Mecanica##################
@@ -581,8 +584,8 @@ while juego:
 
 
 
-#####limpiar pantalla##
-    pantalla.fill((0,0,0))
+    # Dibujar el sprite como fondo
+    pantalla.blit(escenario, (0, 0))
     # Actualizar y dibujar partículas
     for ps in particle_systems[:]:
         ps.update()
