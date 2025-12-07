@@ -2,21 +2,23 @@
 import pygame
 import sqlite3 #importamos sqlite3 para guardar las rondas
 import math
+from particle_system import ParticleSystem
 
 # pantalla del juego
 pygame.init()
 pantalla = pygame.display.set_mode((1280, 720))
 fps = pygame.time.Clock()
 juego = True
-
-
+#particulas
+particle_systems = []
 
 ##########Proyectiles#############
 class ProyectilP1:
     def __init__(self, x, y, target_x, target_y):
-        self.rect = pygame.Rect(x, y, 30, 30)
-        self.color = (255, 0, 0)  # rojo
+        original_image = pygame.image.load("haduken.png").convert_alpha()
+        self.original_image = pygame.transform.scale(original_image, (100, 100))
 
+        # Calcular dirección
         dx = target_x - x
         dy = target_y - y
         mag = (dx**2 + dy**2) ** 0.5
@@ -26,42 +28,77 @@ class ProyectilP1:
         else:
             self.vel_x, self.vel_y = 0, 0
 
+        # Decidir orientación SOLO UNA VEZ
+        if target_x < x:
+            # enemigo está a la izquierda → flip horizontal
+            self.image = pygame.transform.flip(self.original_image, True, False)
+        else:
+            # enemigo está a la derecha → normal
+            self.image = self.original_image
+
+        self.rect = self.image.get_rect(center=(x, y))
+
+
     def update(self):
         self.rect.x += self.vel_x
         self.rect.y += self.vel_y
 
     def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
+        pantalla.blit(self.image, self.rect)
 
 
 class ProyectilP2:
     def __init__(self, x, y, target_x, target_y):
-        self.rect = pygame.Rect(x, y, 30, 30)
-        self.color = (0, 0, 255)  # azul
-        
+        original_image = pygame.image.load("haduken.png").convert_alpha()
+        self.original_image = pygame.transform.scale(original_image, (100, 100))
+
+        # Calcular dirección
         dx = target_x - x
         dy = target_y - y
         mag = (dx**2 + dy**2) ** 0.5
         if mag != 0:
-            self.vel_x = dx / mag * 15
-            self.vel_y = dy / mag * 15
+            self.vel_x = dx / mag * 12
+            self.vel_y = dy / mag * 12
         else:
             self.vel_x, self.vel_y = 0, 0
+
+        # Decidir orientación SOLO UNA VEZ
+        if target_x < x:
+            # enemigo está a la izquierda → flip horizontal
+            self.image = pygame.transform.flip(self.original_image, True, False)
+        else:
+            # enemigo está a la derecha → normal
+            self.image = self.original_image
+
+        self.rect = self.image.get_rect(center=(x, y))
+
 
     def update(self):
         self.rect.x += self.vel_x
         self.rect.y += self.vel_y
 
     def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
+        pantalla.blit(self.image, self.rect)
+
 ##########Proyectiles#############
 
 ###########JUGADORES###########
 
 class jugador:
     def __init__(self, x, y):
-        self.rect = pygame.Rect(x, y, 100, 100)
-        self.color = (255, 0, 0)
+        ########################################
+        # Sprite normal
+        original_image = pygame.image.load("elbean1.png").convert_alpha()
+        self.original_image = pygame.transform.scale(original_image, (150, 150))
+
+        # Sprite de dash
+        dash_image = pygame.image.load("elbean1dash.png").convert_alpha()
+        self.dash_image = pygame.transform.scale(dash_image, (150, 150))
+
+        # Imagen actual
+        self.image = self.original_image
+        self.rect = self.image.get_rect(center=(x, y))
+        ################################
         # Variables de movimiento
         self.vel_x = 0
         self.vel_y = 0
@@ -72,8 +109,9 @@ class jugador:
         # Cooldown del dash
         self.last_dash_time = 0
         self.DASH_COOLDOWN = 500  # 1 segundo
-        # Control de color temporal
-        self.color_change_time = 0  # guarda el momento en que cambió el color
+        # Cooldown del dashB
+        self.last_dashb_time = 0
+        self.DASHb_COOLDOWN = 500  # 1 segundo
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
         ####Cooldown de disparo
@@ -112,33 +150,37 @@ class jugador:
             self.vel_x, self.vel_y = 0, 0
         self.is_dashing = True
         self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
-        #self.color = (0, 255, 0)  # verde
-        self.color_change_time = pygame.time.get_ticks()  # momento del cambio
+        self.image = self.dash_image   # 👈 Cambiar sprite al de dash
         #############
         self.last_dash_time = current_time  # actualizar cooldown
         ###############
     ####AtaqueB###
     def dash_to_playerb(self, jugador2):
-        if self.on_ground:   # solo si está en el suelo
-            # Calcular dirección hacia el otro jugador
-            dx = jugador2.rect.centerx - self.rect.centerx
-            dy = jugador2.rect.centery - self.rect.centery
+############Cooldown dash###########
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_dashb_time < self.DASHb_COOLDOWN:
+            return  # todavía en cooldown, no hacer nada
+############Cooldown dash########
+        # Calcular dirección hacia el otro jugador
+        dx = jugador2.rect.centerx - self.rect.centerx
+        dy = jugador2.rect.centery - self.rect.centery
 
-            # Normalizar dirección para que la velocidad sea constante
-            mag = (dx**2 + dy**2) ** 0.5
-            if mag != 0:
-                self.vel_x = int(dx / mag * 30)   # velocidad horizontal
-            else:
-                self.vel_x, self.vel_y = 0, 0
+        # Normalizar dirección para que la velocidad sea constante
+        mag = (dx**2 + dy**2) ** 0.5
+        if mag != 0:
+            self.vel_x = int(dx / mag * 30)   # velocidad horizontal
+        else:
+            self.vel_x, self.vel_y = 0, 0
             
             # Forzar un pequeño impulso hacia arriba
-            self.vel_y -= 10   # valor negativo = salto
+        self.vel_y -= 10   # valor negativo = salto
             
-            self.is_dashing = True
-            self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
-            self.on_ground = False
-            #self.color = (0, 0, 255)  # azul
-            self.color_change_time = pygame.time.get_ticks()
+        self.is_dashing = True
+        self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+        self.image = self.dash_image
+        #############
+        self.last_dashb_time = current_time  # actualizar cooldown
+        ###############
     #########actualizacion de ataque Dash####
     def update(self):
         # controlar duración del dash
@@ -147,11 +189,8 @@ class jugador:
             if self.dash_timer <= 0:
                 self.is_dashing = False
                 self.vel_x = 0
-        # cambio al color
-        if self.color_change_time != 0:
-            if pygame.time.get_ticks() - self.color_change_time >= 400:  # 1000 ms = 1 seg
-                self.color = (255, 0, 0) #rojo
-                self.color_change_time = 0  # reset para evitar que se repita
+                self.image = self.original_image   # 👈 Volver al sprite normal
+
         # Teletransporte si sale de la pantalla
         if (self.rect.right < 0 or self.rect.left > screen_width or
             self.rect.bottom < 0 or self.rect.top > screen_height):
@@ -159,6 +198,25 @@ class jugador:
             self.vel_x = 0
             self.vel_y = 0
             self.out_of_bounds_count += 1  # 🚀 sumar al contador
+##########actualizacion del sentido del sprite
+    def update_orientation(self, otro_jugador):
+        # Si está en dash, no cambiar sprite
+        if self.is_dashing:
+            if otro_jugador.rect.centerx < self.rect.centerx:
+                # Otro jugador está a la izquierda → dash normal
+                self.image = self.dash_image
+            else:
+                # Otro jugador está a la derecha → dash volteado
+                self.image = pygame.transform.flip(self.dash_image, True, False)
+            return
+        # Comparar horizontal
+        if otro_jugador.rect.centerx < self.rect.centerx:
+            # Otro jugador está a la izquierda → flip horizontal
+            self.image = self.original_image
+            
+        else:
+            # Otro jugador está a la derecha → normal
+            self.image = pygame.transform.flip(self.original_image, True, False)
 
 
     ####Gravedad####
@@ -179,17 +237,41 @@ class jugador:
                 self.rect.bottom = plataforma.rect.top
                 self.vel_y = 0
                 self.on_ground = True
+                # Crear partículas 
+                ps = ParticleSystem(
+                    x=self.rect.centerx,
+                    y=self.rect.bottom,
+                    count=25,          # cantidad de partículas
+                    lifetime=30,       # duración en frames
+                    speed=2,           # velocidad inicial
+                    color=(0,255,255) # azul
+                )
+                particle_systems.append(ps)
+        
         else:
             self.on_ground = False
 
     ####Dibujar jugador####
     def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
+        pantalla.blit(self.image, self.rect)
+
+
 
 class jugador2:
     def __init__(self, x, y):
-        self.rect = pygame.Rect(x, y, 100, 100)
-        self.color = (0, 255, 255)
+        ########################################
+        # Sprite normal
+        original_image = pygame.image.load("elbean2.png").convert_alpha()
+        self.original_image = pygame.transform.scale(original_image, (150, 150))
+
+        # Sprite de dash
+        dash_image = pygame.image.load("elbean2dash.png").convert_alpha()
+        self.dash_image = pygame.transform.scale(dash_image, (150, 150))
+
+        # Imagen actual
+        self.image = self.original_image
+        self.rect = self.image.get_rect(center=(x, y))
+        ################################
         # Variables de movimiento
         self.vel_x = 0
         self.vel_y = 0
@@ -200,8 +282,9 @@ class jugador2:
         # Cooldown del dash
         self.last_dash_time = 0
         self.DASH_COOLDOWN = 500  # 1 segundo
-        # Control de color temporal
-        self.color_change_time = 0  # guarda el momento en que cambió el color
+        # Cooldown del dashB
+        self.last_dashb_time = 0
+        self.DASHb_COOLDOWN = 500  # 1 segundo
         #Contador
         self.out_of_bounds_count = 0  # contador de veces que se sale
         ####Cooldown de disparo
@@ -215,6 +298,7 @@ class jugador2:
                 self.vel_x = -5
             if keys[pygame.K_RIGHT]:
                 self.vel_x = 5
+
         self.rect.x += self.vel_x
     ####Salto####
     def jump(self):
@@ -240,34 +324,39 @@ class jugador2:
             self.vel_x, self.vel_y = 0, 0
         self.is_dashing = True
         self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
-        #self.color = (0, 255, 0)  # verde
-        self.color_change_time = pygame.time.get_ticks()  # momento del cambio
+        self.image = self.dash_image   # 👈 Cambiar sprite al de dash
         #############
         self.last_dash_time = current_time  # actualizar cooldown
         ###############
     ####AtaqueB###
     def dash_to_playerb(self, jugador1):
-        if self.on_ground:   # solo si está en el suelo
-            # Calcular dirección hacia el otro jugador
-            dx = jugador1.rect.centerx - self.rect.centerx
-            dy = jugador1.rect.centery - self.rect.centery
+############Cooldown dash###########
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_dashb_time < self.DASHb_COOLDOWN:
+            return  # todavía en cooldown, no hacer nada
+############Cooldown dash########
+        # Calcular dirección hacia el otro jugador
+        dx = jugador1.rect.centerx - self.rect.centerx
+        dy = jugador1.rect.centery - self.rect.centery
 
-            # Normalizar dirección para que la velocidad sea constante
-            mag = (dx**2) ** 0.5
-            if mag != 0:
-                self.vel_x = int(dx / mag * 30)   # velocidad horizontal
+        # Normalizar dirección para que la velocidad sea constante
+        mag = (dx**2) ** 0.5
+        if mag != 0:
+            self.vel_x = int(dx / mag * 30)   # velocidad horizontal
 
-            else:
-                self.vel_x, self.vel_y = 0, 0
+        else:
+            self.vel_x, self.vel_y = 0, 0
             
             # Forzar un pequeño impulso hacia arriba
-            self.vel_y -= 10   # valor negativo = salto
+        self.vel_y -= 10   # valor negativo = salto
             
-            self.is_dashing = True
-            self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
-            self.on_ground = False
-            #self.color = (0, 0, 255)  # azul
-            self.color_change_time = pygame.time.get_ticks()
+        self.is_dashing = True
+        self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
+        #regresa a su imagen
+        self.image = self.dash_image
+        #############
+        self.last_dashb_time = current_time  # actualizar cooldown
+        ###############
     #########actualizacion de ataque Dash####
     def update(self):
         # controlar duración del dash
@@ -276,11 +365,7 @@ class jugador2:
             if self.dash_timer <= 0:
                 self.is_dashing = False
                 self.vel_x = 0
-        # cambio al color
-        if self.color_change_time != 0:
-            if pygame.time.get_ticks() - self.color_change_time >= 400:  # 1000 ms = 1 seg
-                self.color = (0, 255, 255) #rojo
-                self.color_change_time = 0  # reset para evitar que se repita
+
         # Teletransporte si sale de la pantalla
         if (self.rect.right < 0 or self.rect.left > screen_width or
             self.rect.bottom < 0 or self.rect.top > screen_height):
@@ -289,6 +374,25 @@ class jugador2:
             self.vel_y = 0
         #contador
             self.out_of_bounds_count += 1  #  sumar al contador
+##########actualizacion del sentido del sprite
+    def update_orientation(self, otro_jugador):
+        #sprite del dashing
+        if self.is_dashing:
+            if otro_jugador.rect.centerx < self.rect.centerx:
+                # Otro jugador está a la izquierda → dash normal
+                self.image = self.dash_image
+            else:
+                # Otro jugador está a la derecha → dash volteado
+                self.image = pygame.transform.flip(self.dash_image, True, False)
+            return
+        # Comparar horizontal
+        if otro_jugador.rect.centerx < self.rect.centerx:
+            # Otro jugador está a la izquierda → flip horizontal
+            self.image = self.original_image
+        else:
+            # Otro jugador está a la derecha → normal
+            self.image = pygame.transform.flip(self.original_image, True, False)
+
 
 
 
@@ -310,11 +414,23 @@ class jugador2:
                 self.rect.bottom = plataforma.rect.top
                 self.vel_y = 0
                 self.on_ground = True
+                # Crear partículas 
+                ps = ParticleSystem(
+                    x=self.rect.centerx,
+                    y=self.rect.bottom,
+                    count=25,          # cantidad de partículas
+                    lifetime=30,       # duración en frames
+                    speed=2,           # velocidad inicial
+                    color=(255,0,0) # rojo
+                )
+                particle_systems.append(ps)
+
         else:
             self.on_ground = False
     ####Dibujar jugador####
     def draw(self, pantalla):
-        pygame.draw.rect(pantalla, self.color, self.rect)
+        pantalla.blit(self.image, self.rect)
+
 
 ###########JUGADORES###########
 
@@ -356,6 +472,19 @@ def check_player_collision(j1, j2):
             j2.is_dashing = True
             j2.dash_timer = 8
 
+            # 🔥 Crear partículas de choque en el punto medio
+            cx = (j1.rect.centerx + j2.rect.centerx) // 2
+            cy = (j1.rect.centery + j2.rect.centery) // 2
+            ps = ParticleSystem(
+                x=cx,
+                y=cy,
+                count=30,          # cantidad de partículas
+                lifetime=20,       # duración en frames
+                speed=10,           # velocidad inicial
+                color=(255, 255, 0) # color rojo/naranja tipo chispa
+            )
+            particle_systems.append(ps)
+
 ########Colision de jugadores
 ########Colision de Proyectiles a J
 def check_projectile_collision(player, projectile, knockback=10):
@@ -376,7 +505,18 @@ def check_projectile_collision(player, projectile, knockback=10):
             # Activar estado de dash temporal (igual que en colisión de jugadores)
             player.is_dashing = True
             player.dash_timer = 8
-
+            # 🔥 Crear partículas de choque en el punto medio
+            cx = (player.rect.centerx + projectile.rect.centerx) // 2
+            cy = (player.rect.centery + projectile.rect.centery) // 2
+            ps = ParticleSystem(
+                x=cx,
+                y=cy,
+                count=30,          # cantidad de partículas
+                lifetime=20,       # duración en frames
+                speed=10,           # velocidad inicial
+                color=(0, 200, 255) # color rojo/naranja tipo chispa
+            )
+            particle_systems.append(ps)  # 👈 añadir a la lista global
         # Eliminar proyectil tras impacto
         return True
     return False
@@ -441,7 +581,14 @@ while juego:
 
 
 
-
+#####limpiar pantalla##
+    pantalla.fill((0,0,0))
+    # Actualizar y dibujar partículas
+    for ps in particle_systems[:]:
+        ps.update()
+        ps.draw(pantalla)
+        if not ps.is_alive():
+            particle_systems.remove(ps)
 #######Jugador 1
     jugador1.handle_movement(keys)
     jugador1.apply_gravity()
@@ -457,8 +604,11 @@ while juego:
 ######Mecanica de colisiones
     check_player_collision(jugador1, jugador2)
 
-#####limpiar pantalla##
-    pantalla.fill((0,0,0))
+########Sentidos del sprite
+    jugador1.update_orientation(jugador2)
+    jugador2.update_orientation(jugador1)
+########Sentidos del sprite haduken
+
 
     ######Proyectil################
     for p in proyectiles_p1:
@@ -479,17 +629,18 @@ while juego:
             jugador1.vel_y += p.vel_y * 0.5
             proyectiles_p2.remove(p)
     ######Proyectil###############
+    
 
 #####Contador
     # Crear fuente
     font = pygame.font.SysFont(None, 36)
 
     # Texto jugador1
-    texto_j1 = font.render(f"Jugador1: {jugador1.out_of_bounds_count}", True, (255,0,0))
+    texto_j1 = font.render(f"Jugador1: {jugador1.out_of_bounds_count}", True, (0,0,255))
     pantalla.blit(texto_j1, (540, 20))
 
     # Texto jugador2
-    texto_j2 = font.render(f"Jugador2: {jugador2.out_of_bounds_count}", True, (0,255,255))
+    texto_j2 = font.render(f"Jugador2: {jugador2.out_of_bounds_count}", True, (255,0,0))
     pantalla.blit(texto_j2, (540, 60))
 
 
