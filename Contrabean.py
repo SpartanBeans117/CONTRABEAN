@@ -3,21 +3,65 @@ import pygame
 import sqlite3 #importamos sqlite3 para guardar las rondas
 import math
 from particle_system import ParticleSystem
+import sys
+import subprocess  # para ejecutar otro archivo Python
+import os
 
+
+# Carpeta base
+BASE_DIR = os.path.dirname(__file__)
+MUSICA_DIR = os.path.join(BASE_DIR, "musica")
+SONIDOS_DIR = os.path.join(BASE_DIR, "sonidos")
+SPRITES_DIR = os.path.join(BASE_DIR, "sprites")
 # pantalla del juego
 pygame.init()
 pantalla = pygame.display.set_mode((1280, 720))
 pygame.display.set_caption("escenario")
-escenario = pygame.image.load("escenario.png").convert()
-fps = pygame.time.Clock()
+escenario = pygame.image.load(os.path.join(SPRITES_DIR, "escenario.png")).convert()
+
 juego = True
+
+
+# 🎵 Música
+pygame.mixer.music.load(os.path.join(MUSICA_DIR, "musicajvj.mp3"))
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(-1)  # loop infinito
+
+# 🔊 Sonidos
+choque_sound = pygame.mixer.Sound(os.path.join(SONIDOS_DIR, "choquesong.mp3"))
+choque_sound.set_volume(0.3)
+
+golpe_sound = pygame.mixer.Sound(os.path.join(SONIDOS_DIR, "golpesong.mp3"))
+golpe_sound.set_volume(0.3)
+
+patada_sound = pygame.mixer.Sound(os.path.join(SONIDOS_DIR, "patadasong.mp3"))
+patada_sound.set_volume(0.3)
+
+haduken_sound = pygame.mixer.Sound(os.path.join(SONIDOS_DIR, "hadukensong.mp3"))
+haduken_sound.set_volume(0.3)
+
+# 🎨 Sprites
+plataforma_img = pygame.image.load(os.path.join(SPRITES_DIR, "plataforma.png")).convert_alpha()
+
+# Jugador 1
+jugador1_img = pygame.image.load(os.path.join(SPRITES_DIR, "elbean1.png")).convert_alpha()
+jugador1_dash_img = pygame.image.load(os.path.join(SPRITES_DIR, "elbean1dash.png")).convert_alpha()
+
+# Jugador 2
+jugador2_img = pygame.image.load(os.path.join(SPRITES_DIR, "elbean2.png")).convert_alpha()
+jugador2_dash_img = pygame.image.load(os.path.join(SPRITES_DIR, "elbean2dash.png")).convert_alpha()
+
+# Proyectil
+haduken_img = pygame.image.load(os.path.join(SPRITES_DIR, "haduken.png")).convert_alpha()
+# Plataforma
+
 #particulas
 particle_systems = []
 
 ##########Proyectiles#############
 class ProyectilP1:
     def __init__(self, x, y, target_x, target_y):
-        original_image = pygame.image.load("haduken.png").convert_alpha()
+        original_image = pygame.image.load(os.path.join(SPRITES_DIR, "haduken.png")).convert_alpha()
         self.original_image = pygame.transform.scale(original_image, (100, 100))
 
         # Calcular dirección
@@ -39,6 +83,8 @@ class ProyectilP1:
             self.image = self.original_image
 
         self.rect = self.image.get_rect(center=(x, y))
+        
+        haduken_sound.play()
 
 
     def update(self):
@@ -51,7 +97,7 @@ class ProyectilP1:
 
 class ProyectilP2:
     def __init__(self, x, y, target_x, target_y):
-        original_image = pygame.image.load("haduken.png").convert_alpha()
+        original_image = pygame.image.load(os.path.join(SPRITES_DIR, "haduken.png")).convert_alpha()
         self.original_image = pygame.transform.scale(original_image, (100, 100))
 
         # Calcular dirección
@@ -73,6 +119,7 @@ class ProyectilP2:
             self.image = self.original_image
 
         self.rect = self.image.get_rect(center=(x, y))
+        haduken_sound.play()
 
 
     def update(self):
@@ -90,11 +137,11 @@ class jugador:
     def __init__(self, x, y):
         ########################################
         # Sprite normal
-        original_image = pygame.image.load("elbean1.png").convert_alpha()
+        original_image = pygame.image.load(os.path.join(SPRITES_DIR, "elbean1.png")).convert_alpha()
         self.original_image = pygame.transform.scale(original_image, (150, 150))
 
         # Sprite de dash
-        dash_image = pygame.image.load("elbean1dash.png").convert_alpha()
+        dash_image = pygame.image.load(os.path.join(SPRITES_DIR, "elbean1dash.png")).convert_alpha()
         self.dash_image = pygame.transform.scale(dash_image, (150, 150))
 
         # Imagen actual
@@ -156,6 +203,7 @@ class jugador:
         #############
         self.last_dash_time = current_time  # actualizar cooldown
         ###############
+        golpe_sound.play()
     ####AtaqueB###
     def dash_to_playerb(self, jugador2):
 ############Cooldown dash###########
@@ -183,6 +231,7 @@ class jugador:
         #############
         self.last_dashb_time = current_time  # actualizar cooldown
         ###############
+        patada_sound.play()
     #########actualizacion de ataque Dash####
     def update(self):
         # controlar duración del dash
@@ -262,11 +311,11 @@ class jugador2:
     def __init__(self, x, y):
         ########################################
         # Sprite normal
-        original_image = pygame.image.load("elbean2.png").convert_alpha()
+        original_image = pygame.image.load(os.path.join(SPRITES_DIR, "elbean2.png")).convert_alpha()
         self.original_image = pygame.transform.scale(original_image, (150, 150))
 
         # Sprite de dash
-        dash_image = pygame.image.load("elbean2dash.png").convert_alpha()
+        dash_image = pygame.image.load(os.path.join(SPRITES_DIR, "elbean2dash.png")).convert_alpha()
         self.dash_image = pygame.transform.scale(dash_image, (150, 150))
 
         # Imagen actual
@@ -329,6 +378,7 @@ class jugador2:
         #############
         self.last_dash_time = current_time  # actualizar cooldown
         ###############
+        golpe_sound.play()
     ####AtaqueB###
     def dash_to_playerb(self, jugador1):
 ############Cooldown dash###########
@@ -341,10 +391,9 @@ class jugador2:
         dy = jugador1.rect.centery - self.rect.centery
 
         # Normalizar dirección para que la velocidad sea constante
-        mag = (dx**2) ** 0.5
+        mag = (dx**2 + dy**2) ** 0.5
         if mag != 0:
             self.vel_x = int(dx / mag * 30)   # velocidad horizontal
-
         else:
             self.vel_x, self.vel_y = 0, 0
             
@@ -353,11 +402,11 @@ class jugador2:
             
         self.is_dashing = True
         self.dash_timer = 10   # frames que dura el dash (~1/3 seg a 60fps)
-        #regresa a su imagen
         self.image = self.dash_image
         #############
         self.last_dashb_time = current_time  # actualizar cooldown
         ###############
+        patada_sound.play()
     #########actualizacion de ataque Dash####
     def update(self):
         # controlar duración del dash
@@ -438,7 +487,7 @@ class jugador2:
 class plataforma:
     def __init__(self, x, y):
         # Cargar sprite de la plataforma
-        original_image = pygame.image.load("plataforma.png").convert_alpha()
+        original_image = pygame.image.load(os.path.join(SPRITES_DIR, "plataforma.png")).convert_alpha()
         self.image = pygame.transform.scale(original_image, (1280, 216))
         self.rect = self.image.get_rect(topleft=(x, y))
         
@@ -487,6 +536,8 @@ def check_player_collision(j1, j2):
                 color=(255, 255, 0) # color rojo/naranja tipo chispa
             )
             particle_systems.append(ps)
+            # Reproduce el sonido del choque
+            choque_sound.play()
 
 ########Colision de jugadores
 ########Colision de Proyectiles a J
@@ -520,12 +571,34 @@ def check_projectile_collision(player, projectile, knockback=10):
                 color=(0, 200, 255) # color rojo/naranja tipo chispa
             )
             particle_systems.append(ps)  # 👈 añadir a la lista global
+            choque_sound.play()
         # Eliminar proyectil tras impacto
         return True
+
     return False
 ########Colision de Proyectiles a J
 
 ########Colisiones Mecanica################
+#########Reiniciar juego
+def reiniciar_juego():
+    # Reiniciar posiciones iniciales
+    jugador1.rect.topleft = (100, 300)   # posición inicial jugador 1
+    jugador2.rect.topleft = (1100, 300)   # posición inicial jugador 2
+
+    # Reiniciar puntuaciones
+    jugador1.out_of_bounds_count = 0
+    jugador2.out_of_bounds_count = 0
+
+    # Reiniciar velocidades
+    jugador1.vel_x = 0
+    jugador1.vel_y = 0
+    jugador2.vel_x = 0
+    jugador2.vel_y = 0
+    #eliminar proyectiles
+    proyectiles_p1.clear()
+    proyectiles_p2.clear()
+############
+
 
 plataforma1 = plataforma(0,500) #posicion de la plataforma
 
@@ -537,14 +610,28 @@ screen_height = pantalla.get_height()
 #almacen de proyectiles
 proyectiles_p1 = []
 proyectiles_p2 = []
-
+#FPS
+fps = pygame.time.Clock()
+FPS = 60 
 ########################JUEGO#####################
 while juego:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             juego = False
-        ######Controles del jugador
+        ######Atajos de reiniciar y menu
         if event.type == pygame.KEYDOWN:
+            #if event.key == pygame.K_m:
+            if event.key == pygame.K_r:  # Tecla R reinicia puntuación y posición
+                reiniciar_juego()
+                    # Presionar Enter
+            #volver al menu
+            if event.key == pygame.K_t:
+                juego = False
+                pygame.mixer.music.stop()   # 👈 detener música al salir                
+                pygame.quit()   # 👈 cerrar ventana del menú
+                subprocess.run(["python", "menu.py"])
+                sys.exit()
+        ######Controles del jugador
             if event.key == pygame.K_b:
                 jugador1.dash_to_player(jugador2)
             if event.key == pygame.K_n:
@@ -555,7 +642,8 @@ while juego:
                     proyectiles_p1.append(ProyectilP1(jugador1.rect.centerx, jugador1.rect.centery,
                                                     jugador2.rect.centerx, jugador2.rect.centery))
                     jugador1.last_shot_time = current_time
-            #if event.key == pygame.K_m:
+
+
 
         ######COntroles del jugador 2
             if event.key == pygame.K_KP1:
@@ -636,15 +724,18 @@ while juego:
 
 #####Contador
     # Crear fuente
-    font = pygame.font.SysFont(None, 36)
+    font = pygame.font.SysFont(None, 100)
 
     # Texto jugador1
-    texto_j1 = font.render(f"Jugador1: {jugador1.out_of_bounds_count}", True, (0,0,255))
-    pantalla.blit(texto_j1, (540, 20))
+    texto_j1 = font.render(f" {jugador1.out_of_bounds_count}", True, (255,0,0))
+    pantalla.blit(texto_j1, (640, 20))
+###texto divsor
+    divisor = font.render(f"-", True, (0,0,0))
+    pantalla.blit(divisor, (615, 20))
 
     # Texto jugador2
-    texto_j2 = font.render(f"Jugador2: {jugador2.out_of_bounds_count}", True, (255,0,0))
-    pantalla.blit(texto_j2, (540, 60))
+    texto_j2 = font.render(f" {jugador2.out_of_bounds_count}", True, (0,0,255))
+    pantalla.blit(texto_j2, (500, 20))
 
 
     plataforma1.draw(pantalla)
@@ -652,11 +743,10 @@ while juego:
     jugador2.draw(pantalla)
 
     pygame.display.flip()
-    fps.tick(60)
+    fps.tick(FPS)
 
 
 ########################JUEGO#####################
 
-
-
 pygame.quit()
+sys.exit()
